@@ -1,6 +1,8 @@
 use std::io::Write;
 
+mod expression;
 mod grammar;
+//mod tseitin;
 
 fn main() {
     let stdin = std::io::stdin();

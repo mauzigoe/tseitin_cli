@@ -1,44 +1,21 @@
-#[derive(Debug, Clone)]
-pub enum BinaryOperation {
-    And,
-    Or,
-    Xor,
-    Eq,
-}
-
 #[rust_sitter::grammar("grammar_bool")]
 pub mod grammar_bool {
-    use super::BinaryOperation;
-
     #[rust_sitter::language]
     #[derive(Debug, Clone)]
     pub enum Expr {
-        PosLit(
-            #[rust_sitter::leaf(pattern = r"[0-9a-zA-Z]+", transform = |v| v[0..].to_string())]
-            String,
-        ),
-        NegLit(
-            #[rust_sitter::leaf(pattern = r"-[0-9a-zA-Z]+", transform = |v| v[1..].to_string())]
-            String,
-        ),
+        Var(#[rust_sitter::leaf(pattern = r"[0-9a-zA-Z]+", transform = |v| v.to_string())] String),
         #[rust_sitter::prec_left(1)]
-        BinOp(
+        Neg(#[rust_sitter::leaf(pattern = "!|not")] (), Box<Expr>),
+        #[rust_sitter::prec_left(2)]
+        And(
             Box<Expr>,
-            #[
-                rust_sitter::leaf(
-                    text = "&",
-                    transform = |v| match v {
-                        "|" => BinaryOperation::Or,
-                        "&" => BinaryOperation::And ,
-                        "^" => BinaryOperation::Xor,
-                        "=" => BinaryOperation::Eq,
-                        _ => {
-                            panic!("Binary Operator not known")
-                        }
-                    }
-                )
-            ]
-            BinaryOperation,
+            #[rust_sitter::leaf(pattern = "&|&&|and")] (),
+            Box<Expr>,
+        ),
+        #[rust_sitter::prec_left(3)]
+        Or(
+            Box<Expr>,
+            #[rust_sitter::leaf(pattern = r"\||\|\||or|")] (),
             Box<Expr>,
         ),
         Bracket(
@@ -48,7 +25,7 @@ pub mod grammar_bool {
         ),
     }
     #[rust_sitter::extra]
-    struct Whitespace {
+    pub struct Whitespace {
         #[rust_sitter::leaf(pattern = r"\s")]
         _whitespace: (),
     }
