@@ -4,7 +4,7 @@ pub mod grammar_bool {
     #[derive(Debug, Clone)]
     pub enum Expr {
         Var(#[rust_sitter::leaf(pattern = r"[0-9a-zA-Z]+", transform = |v| v.to_string())] String),
-        #[rust_sitter::prec_left(1)]
+        #[rust_sitter::prec_left(3)]
         Neg(#[rust_sitter::leaf(pattern = "!|not")] (), Box<Expr>),
         #[rust_sitter::prec_left(2)]
         And(
@@ -12,12 +12,13 @@ pub mod grammar_bool {
             #[rust_sitter::leaf(pattern = "&|&&|and")] (),
             Box<Expr>,
         ),
-        #[rust_sitter::prec_left(3)]
+        #[rust_sitter::prec_left(1)]
         Or(
             Box<Expr>,
             #[rust_sitter::leaf(pattern = r"\||\|\||or|")] (),
             Box<Expr>,
         ),
+        #[rust_sitter::prec_left(0)]
         Bracket(
             #[rust_sitter::leaf(text = "(")] (),
             Box<Expr>,
