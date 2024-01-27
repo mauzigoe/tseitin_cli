@@ -1,8 +1,11 @@
 use std::io::Write;
 
-mod expression;
+use crate::tseitin::tseitin_encoder;
+
+mod cnf;
 mod grammar;
-//mod tseitin;
+mod transform;
+mod tseitin;
 
 fn main() {
     let stdin = std::io::stdin();
@@ -19,7 +22,17 @@ fn main() {
         }
 
         match grammar::grammar_bool::parse(input) {
-            Ok(expr) => println!("{:?}", expr),
+            Ok(expr) => match tseitin_encoder(expr) {
+                Ok(tseitin_expr) => {
+                    println!("variables {:?}", tseitin_expr.variables());
+                    let output: String = tseitin_expr.clone().into();
+                    println!("{}", output);
+                    println!("{:?}", tseitin_expr);
+                }
+                Err(errs) => {
+                    println!("{:?}\n", errs);
+                }
+            },
             Err(errs) => {
                 for error in errs {
                     println!("{:?}\n", error);

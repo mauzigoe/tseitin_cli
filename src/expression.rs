@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 
 use crate::grammar::grammar_bool::Expr;
 
@@ -26,12 +26,12 @@ impl IntoIterator for &Expr {
 
 impl Expr {
     /// Checks if Expr is a terminal in the syntax tree
-    fn is_terminal(&self) -> bool {
+    pub fn is_terminal(&self) -> bool {
         matches!(self, Expr::Var(_))
     }
     /// Returns sorted list of variable names
-    fn variables(&mut self) -> HashSet<String> {
-        let mut name_list = HashSet::<String>::new();
+    pub fn variables(&mut self) -> BTreeSet<String> {
+        let mut name_list = BTreeSet::<String>::new();
 
         for expr in self.into_iter() {
             if let Expr::Var(name) = expr {
