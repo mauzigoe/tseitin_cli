@@ -4,7 +4,6 @@ use crate::tseitin::tseitin_encoder;
 
 mod cnf;
 mod grammar;
-mod transform;
 mod tseitin;
 
 fn main() {
@@ -22,12 +21,13 @@ fn main() {
         }
 
         match grammar::grammar_bool::parse(input) {
-            Ok(expr) => match tseitin_encoder(expr) {
+            Ok(expr) => match tseitin_encoder(expr.clone()) {
                 Ok(tseitin_expr) => {
                     println!("variables {:?}", tseitin_expr.variables());
-                    let output: String = tseitin_expr.clone().into();
-                    println!("{}", output);
-                    println!("{:?}", tseitin_expr);
+                    let tseitin_is_cnf = tseitin_expr.is_cnf();
+                    if tseitin_is_cnf {
+                        tseitin_expr.to_cnf_file(&"test.cnf");
+                    }
                 }
                 Err(errs) => {
                     println!("{:?}\n", errs);
