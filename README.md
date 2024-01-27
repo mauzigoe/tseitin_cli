@@ -10,3 +10,4 @@ Following general features are to be added:
 - `--help`
 - Precedence of operators
 - other operators (e.g. implication `=>`)
+- show relation between new variables from tseitin expression and the expression they represent 
