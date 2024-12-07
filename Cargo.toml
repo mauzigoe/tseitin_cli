@@ -5,10 +5,10 @@ authors = ["Leon Frangen"]
 edition = "2021"
 publish = false
 
-[dependencies]
-rust-sitter =  "0.4.1"
+#[dependencies]
+#rust-sitter =  "0.4.1"
 #codemap = "0.1.2"
 #codemap-diagnostic = { version = "0.1.2" }
 
-[build-dependencies]
-rust-sitter-tool = "0.4.1"
+#[build-dependencies]
+#rust-sitter-tool = "0.4.1"
