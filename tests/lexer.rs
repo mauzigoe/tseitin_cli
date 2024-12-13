@@ -1,18 +1,25 @@
 #[cfg(test)]
 mod tests {
-    use tseitin::lexer::{Lexer, Token};
+    use tseitin::lexer::{scan_complete, Token};
+    use tseitin::types::{Op, Atom};
 
     
     #[test]
     fn test_lexer() {
-	let input = " aob1 & (Av1d | 1) | 0 \n".to_string();
-	let mut lexer = Lexer::new(input);
-	
-	let token_store = lexer.scan_complete().unwrap();
+	let input = " aob_1 &(!Av1d | 1) | 0 \n".to_string();
+	let token_store = scan_complete(input).unwrap();
 
 	let mut iter = token_store.iter();
 
-	assert_eq!(*iter.next().unwrap(), Token::Var("aob1".to_string()));
-	
+	assert_eq!(*iter.next().unwrap(), Token::Atom(Atom::Var("aob_1".to_string())));
+	assert_eq!(*iter.next().unwrap(), Token::Op(Op::And));
+	assert_eq!(*iter.next().unwrap(), Token::LeftBracket);
+	assert_eq!(*iter.next().unwrap(), Token::Op(Op::Not));
+	assert_eq!(*iter.next().unwrap(), Token::Atom(Atom::Var("Av1d".to_string())));
+	assert_eq!(*iter.next().unwrap(), Token::Op(Op::Or));
+	assert_eq!(*iter.next().unwrap(), Token::Atom(Atom::True));
+	assert_eq!(*iter.next().unwrap(), Token::RightBracket);
+	assert_eq!(*iter.next().unwrap(), Token::Op(Op::Or));
+	assert_eq!(*iter.next().unwrap(), Token::Atom(Atom::False));
     } 
 }
