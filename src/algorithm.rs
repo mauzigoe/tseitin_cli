@@ -1,17 +1,20 @@
 use crate::{types::Atom, parser::{ParserAst, BiOp}};
 
 pub fn tseitin_encoder(expr_input: ParserAst) -> Result<ParserAst, String> {
-    let (_, optional_tseitin_expr) = process_expr(expr_input, 0);
-    optional_tseitin_expr.ok_or("Tseitin Expression could not be created".to_string())
+    let (c, optional_tseitin_expr) = process_expr(expr_input, &mut 0);
+
+    let tseitin_expr = optional_tseitin_expr.ok_or("Tseitin Expression could not be created".to_string()); 
+    return Ok(ParserAst::BiOp(Box::new(c), BiOp::And, Box::new(tseitin_expr?)));
 }
 
-fn process_expr(expr: ParserAst, var_count: usize) -> (ParserAst, Option<ParserAst>) {
+fn process_expr(expr: ParserAst, var_count: &mut usize) -> (ParserAst, Option<ParserAst>) {
+    *var_count += 1;
     let var_name = format!("EXTRA_VAR_{}", var_count);
     let expr_var = ParserAst::Atom(Atom::Var(var_name));
     match expr {
         ParserAst::BiOp(expr_left, op, expr_right) => {
-            let (extra_var_left, optional_expr_left) = process_expr(*expr_left, var_count + 1);
-            let (extra_var_right, optional_expr_right) = process_expr(*expr_right, var_count + 2);
+            let (extra_var_left, optional_expr_left) = process_expr(*expr_left, var_count);
+            let (extra_var_right, optional_expr_right) = process_expr(*expr_right, var_count);
 
             let mut tseitin_expr = match op {
 		BiOp::And => equivalent_and_expr_cnf(
@@ -24,18 +27,18 @@ fn process_expr(expr: ParserAst, var_count: usize) -> (ParserAst, Option<ParserA
 		    .expect("Operands in equivalent_expr_cnf are not ParserAst::Atom(Atom::Var)"),
 	    };
 
-            if let Some(expr_left) = optional_expr_left {
-                tseitin_expr = ParserAst::BiOp(Box::new(tseitin_expr), BiOp::And, Box::new(expr_left));
+            if let Some(lexpr) = optional_expr_left {
+                tseitin_expr = ParserAst::BiOp(Box::new(tseitin_expr), BiOp::And, Box::new(lexpr));
             };
 	    
-            if let Some(expr_right) = optional_expr_right {
-                tseitin_expr = ParserAst::BiOp(Box::new(tseitin_expr), BiOp::And, Box::new(expr_right));
+            if let Some(rexpr) = optional_expr_right {
+                tseitin_expr = ParserAst::BiOp(Box::new(tseitin_expr), BiOp::And, Box::new(rexpr));
             };
 
             (expr_var, Some(tseitin_expr))
         }
         ParserAst::Not(expr_right) => {
-            let (extra_var, optional_expr) = process_expr(*expr_right, var_count + 1);
+            let (extra_var, optional_expr) = process_expr(*expr_right, var_count);
 
             let mut tseitin_expr =
                 equivalent_not_expr_cnf(&expr_var, &extra_var)
@@ -92,7 +95,9 @@ fn equivalent_or_expr_cnf(c: &ParserAst, x: &ParserAst, y: &ParserAst) -> Option
 		Box::new(y.clone())
 	    )),
             BiOp::Or,
-            Box::new(ParserAst::Not(Box::new((*c).clone()))),
+            Box::new(ParserAst::Not(
+		Box::new((*c).clone())
+	    )),
         )),
         BiOp::And,
         Box::new(ParserAst::BiOp(
