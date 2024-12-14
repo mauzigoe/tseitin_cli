@@ -7,7 +7,6 @@ mod tests {
     fn test_parser_1() {
 	let input = " aob_1 & ( !Av1d | 1 ) | 0".to_string();
 	let token_store = scan_complete(input).unwrap();
-	println!("token_store {:?}", token_store.clone());
 	let mut parser = Parser::new(token_store);
 	let ast = parser.process(0);
 
