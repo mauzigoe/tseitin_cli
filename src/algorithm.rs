@@ -1,130 +1,138 @@
-use crate::{types::Atom, parser::{ParserAst, BiOp}};
+use crate::{types::Atom, parser::{Expr, BiOp}};
 
-pub fn tseitin_encoder(expr_input: ParserAst) -> Result<ParserAst, String> {
-    let (c, optional_tseitin_expr) = process_expr(expr_input, &mut 0);
+/// Tseitin encode [`Expr`] to a [`CNF`](https://en.wikipedia.org/wiki/Conjunctive_normal_form)-conform [`Expr`]. 
+pub fn tseitin_encode(expr_input: Expr) -> Result<Expr, String> {
+    let (c, optional_tseitin_expr) = tseitin_encode_inner(expr_input, &mut 0);
 
     let tseitin_expr = optional_tseitin_expr.ok_or("Tseitin Expression could not be created".to_string()); 
-    return Ok(ParserAst::BiOp(Box::new(c), BiOp::And, Box::new(tseitin_expr?)));
+    return Ok(Expr::BiOp(Box::new(Expr::Atom(c)), BiOp::And, Box::new(tseitin_expr?)));
 }
 
-fn process_expr(expr: ParserAst, var_count: &mut usize) -> (ParserAst, Option<ParserAst>) {
+/// Inner implementation of [`tseitin_encode`].
+/// Takes [`Expr`] and incrementable [`var_count`] to track extra variables used for tseiting encoding.\\
+/// Returns [`Atom`], [`Option<Expr>`] . [`Atom`] is the identifier for the extra tseitin variable used to encode an boolean expression. [`Option<Expr>`] possibly contains the additional CNF expression introduced by the tseitin encoding, otherwise `None` (e.g. if [`tseitin_encode_inner`] is applied to [`Expr::Atom`]\([`Atom::Var`]\(x\)\))
+fn tseitin_encode_inner(expr: Expr, var_count: &mut usize) -> (Atom, Option<Expr>) {
     *var_count += 1;
     let var_name = format!("EXTRA_VAR_{}", var_count);
-    let expr_var = ParserAst::Atom(Atom::Var(var_name));
+    let atom_var = Atom::Var(var_name);
     match expr {
-        ParserAst::BiOp(expr_left, op, expr_right) => {
-            let (extra_var_left, optional_expr_left) = process_expr(*expr_left, var_count);
-            let (extra_var_right, optional_expr_right) = process_expr(*expr_right, var_count);
+        Expr::BiOp(expr_left, op, expr_right) => {
+            let (extra_atom_var_left, optional_expr_left) = tseitin_encode_inner(*expr_left, var_count);
+            let (extra_atom_var_right, optional_expr_right) = tseitin_encode_inner(*expr_right, var_count);
 
             let mut tseitin_expr = match op {
 		BiOp::And => equivalent_and_expr_cnf(
-                    &expr_var,
-                    &extra_var_left,&extra_var_right)
-		    .expect("Operands in equivalent_expr_cnf are not ParserAst::Atom(Atom::Var)"),
+                    atom_var.clone(),
+                    extra_atom_var_left,extra_atom_var_right),
 		BiOp::Or => equivalent_or_expr_cnf(
-                    &expr_var,
-                    &extra_var_left,&extra_var_right)
-		    .expect("Operands in equivalent_expr_cnf are not ParserAst::Atom(Atom::Var)"),
+                    atom_var.clone(),
+                    extra_atom_var_left,extra_atom_var_right)
 	    };
 
             if let Some(lexpr) = optional_expr_left {
-                tseitin_expr = ParserAst::BiOp(Box::new(tseitin_expr), BiOp::And, Box::new(lexpr));
+                tseitin_expr = Expr::BiOp(Box::new(tseitin_expr), BiOp::And, Box::new(lexpr));
             };
 	    
             if let Some(rexpr) = optional_expr_right {
-                tseitin_expr = ParserAst::BiOp(Box::new(tseitin_expr), BiOp::And, Box::new(rexpr));
+                tseitin_expr = Expr::BiOp(Box::new(tseitin_expr), BiOp::And, Box::new(rexpr));
             };
 
-            (expr_var, Some(tseitin_expr))
+            (atom_var.clone(), Some(tseitin_expr))
         }
-        ParserAst::Not(expr_right) => {
-            let (extra_var, optional_expr) = process_expr(*expr_right, var_count);
+        Expr::Not(expr_right) => {
+            let (extra_var, optional_expr) = tseitin_encode_inner(*expr_right, var_count);
 
-            let mut tseitin_expr =
-                equivalent_not_expr_cnf(&expr_var, &extra_var)
-                .expect("Operands in equivalent_expr_cnf are not ParserAst(Atom::Var)");
-
+            let mut tseitin_expr = equivalent_not_expr_cnf(atom_var.clone(), extra_var);
 	    if let Some(expr) = optional_expr {
-                tseitin_expr = ParserAst::BiOp(Box::new(tseitin_expr), BiOp::And, Box::new(expr));
+                tseitin_expr = Expr::BiOp(Box::new(tseitin_expr), BiOp::And, Box::new(expr));
             }
 
-            (expr_var, Some(tseitin_expr))
+            (atom_var.clone(), Some(tseitin_expr))
         }
-        ParserAst::Atom(Atom::Var(_)) => (expr, None),
-        ParserAst::Atom(Atom::True) => (expr_var, None),
-        ParserAst::Atom(Atom::False) => (ParserAst::Not(Box::new(expr_var)), None),
+        Expr::Atom(Atom::True) => (atom_var.clone(), Some(Expr::Atom(atom_var.clone()))),
+        Expr::Atom(Atom::False) => (atom_var.clone(), Some(Expr::Not(Box::new(Expr::Atom(atom_var.clone()))))),
+        Expr::Atom(x) => (x, None),
     }
 }
 
-fn equivalent_and_expr_cnf(c: &ParserAst, x: &ParserAst, y: &ParserAst) -> Option<ParserAst> {
-    Some(
-	ParserAst::BiOp(
-            Box::new(ParserAst::BiOp(
-		Box::new(ParserAst::BiOp(
-                    Box::new(ParserAst::Not(Box::new(x.clone()))),
-                    BiOp::Or,
-                    Box::new(ParserAst::Not(Box::new(y.clone()))),
-		)),
-		BiOp::Or,
-		Box::new(c.clone()),
-            )),
-            BiOp::And,
-            Box::new(ParserAst::BiOp(
-		Box::new(ParserAst::BiOp(
-                    Box::new(x.clone()),
-                    BiOp::Or,
-                    Box::new(ParserAst::Not(Box::new(c.clone()))),
-		)),
-		BiOp::And,
-		Box::new(ParserAst::BiOp(
-                    Box::new(y.clone()),
-                    BiOp::Or,
-                    Box::new(ParserAst::Not(Box::new(c.clone()))),
-		)),
-            )),
-	)
+/// returns the cnf-conform expression `c = a & b` ("`c` is true iff `a & b`)
+fn equivalent_and_expr_cnf(c: Atom, a: Atom, b: Atom) -> Expr {
+    let c = Expr::Atom(c.clone());
+    let a = Expr::Atom(a.clone());
+    let b = Expr::Atom(b.clone());
+    Expr::BiOp(
+        Box::new(Expr::BiOp(
+	    Box::new(Expr::BiOp(
+                Box::new(Expr::Not(Box::new(a.clone()))),
+                BiOp::Or,
+                Box::new(Expr::Not(Box::new(b.clone()))),
+	    )),
+	    BiOp::Or,
+	    Box::new(c.clone()),
+        )),
+        BiOp::And,
+        Box::new(Expr::BiOp(
+	    Box::new(Expr::BiOp(
+                Box::new(a.clone()),
+                BiOp::Or,
+                Box::new(Expr::Not(Box::new(c.clone()))),
+	    )),
+	    BiOp::And,
+	    Box::new(Expr::BiOp(
+                Box::new(b.clone()),
+                BiOp::Or,
+                Box::new(Expr::Not(Box::new(c.clone()))),
+	    )),
+        )),
     )
 }
 
-fn equivalent_or_expr_cnf(c: &ParserAst, x: &ParserAst, y: &ParserAst) -> Option<ParserAst> {
-    Some(ParserAst::BiOp(
-        Box::new(ParserAst::BiOp(
-            Box::new(ParserAst::BiOp(
-		Box::new(x.clone()),
+/// returns the cnf-conform expression `c = a | b`
+fn equivalent_or_expr_cnf(c: Atom, a: Atom, b: Atom) -> Expr {
+    let c = Expr::Atom(c.clone());
+    let a = Expr::Atom(a.clone());
+    let b = Expr::Atom(b.clone());
+    Expr::BiOp(
+        Box::new(Expr::BiOp(
+            Box::new(Expr::BiOp(
+		Box::new(a.clone()),
 		BiOp::Or,
-		Box::new(y.clone())
+		Box::new(b.clone())
 	    )),
             BiOp::Or,
-            Box::new(ParserAst::Not(
-		Box::new((*c).clone())
+            Box::new(Expr::Not(
+		Box::new(c.clone())
 	    )),
         )),
         BiOp::And,
-        Box::new(ParserAst::BiOp(
-            Box::new(ParserAst::BiOp(
-                Box::new((*c).clone()),
+        Box::new(Expr::BiOp(
+            Box::new(Expr::BiOp(
+                Box::new(c.clone()),
                 BiOp::Or,
-                Box::new(ParserAst::Not(Box::new((*x).clone()))),
+                Box::new(Expr::Not(Box::new(a.clone()))),
             )),
             BiOp::And,
-            Box::new(ParserAst::BiOp(
-                Box::new((*c).clone()),
+            Box::new(Expr::BiOp(
+                Box::new(c.clone()),
                 BiOp::Or,
-                Box::new(ParserAst::Not(Box::new((*y).clone()))),
+                Box::new(Expr::Not(Box::new(b.clone()))),
             )),
         )),
-    ))
+    )
 }
     
-fn equivalent_not_expr_cnf(c: &ParserAst, x: &ParserAst) -> Option<ParserAst> {
-    Some(ParserAst::BiOp(
-        Box::new(ParserAst::BiOp(
-            Box::new(ParserAst::Not(Box::new((*x).clone()))),
+/// returns the cnf-conform expression `c=!a`
+fn equivalent_not_expr_cnf(c: Atom, a: Atom) -> Expr {
+    let c = Expr::Atom(c.clone());
+    let a = Expr::Atom(a.clone());
+    Expr::BiOp(
+        Box::new(Expr::BiOp(
+            Box::new(Expr::Not(Box::new(a.clone()))),
             BiOp::Or,
-            Box::new(ParserAst::Not(Box::new((*c).clone()))),
+            Box::new(Expr::Not(Box::new(c.clone()))),
         )),
         BiOp::And,
-        Box::new(ParserAst::BiOp(Box::new((*x).clone()), BiOp::Or, Box::new((*c).clone()))),
-    ))
+        Box::new(Expr::BiOp(Box::new(a.clone()), BiOp::Or, Box::new(c.clone()))),
+    )
 }
 

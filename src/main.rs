@@ -1,5 +1,5 @@
 use std::io::Write;
-use tseitin::{lexer::scan_complete, parser::Parser, algorithm::tseitin_encoder};
+use tseitin::{lexer::scan_complete, parser::Parser, algorithm::tseitin_encode};
 
 fn main() {
     let stdin = std::io::stdin();
@@ -21,7 +21,7 @@ fn main() {
 	let mut parser = Parser::new(token);
 	let ast = parser.process(0);
 	
-        match tseitin_encoder(ast.clone()) {
+        match tseitin_encode(ast.clone()) {
             Ok(tseitin_expr) => {
                 let tseitin_is_cnf = tseitin_expr.is_cnf();
                 if tseitin_is_cnf {

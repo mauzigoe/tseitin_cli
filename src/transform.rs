@@ -1,25 +1,25 @@
-use crate::{parser::{BiOp, ParserAst}, types::Atom};
+use crate::{parser::{BiOp, Expr}, types::Atom};
 
-impl From<ParserAst> for String {
-    fn from(value: ParserAst) -> Self {
+impl From<Expr> for String {
+    fn from(value: Expr) -> Self {
         match value {
-            ParserAst::BiOp(x, BiOp::And, y) => {
+            Expr::BiOp(x, BiOp::And, y) => {
                 let x: String = (*x).into();
                 let y: String = (*y).into();
                 format!("({} & {})", x, y)
             }
-            ParserAst::BiOp(x, BiOp::Or, y) => {
+            Expr::BiOp(x, BiOp::Or, y) => {
                 let x: String = (*x).into();
                 let y: String = (*y).into();
                 format!("({} | {})", x, y)
             }
-            ParserAst::Not(x) => {
+            Expr::Not(x) => {
                 let x: String = (*x).into();
                 format!("!({})", x)
             }
-            ParserAst::Atom(Atom::Var(x)) => x,
-            ParserAst::Atom(Atom::False) => "False".to_string(),
-            ParserAst::Atom(Atom::True) => "True".to_string(),
+            Expr::Atom(Atom::Var(x)) => x,
+            Expr::Atom(Atom::False) => "False".to_string(),
+            Expr::Atom(Atom::True) => "True".to_string(),
         }
     }
 }

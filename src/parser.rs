@@ -9,26 +9,26 @@ pub enum BiOp {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub enum ParserAst {
+pub enum Expr {
     Atom(Atom),
     BiOp(Box<Self>, BiOp, Box<Self>),
     Not(Box<Self>),
 }
 
-impl Debug for ParserAst {
+impl Debug for Expr {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
 	match self {
-	    ParserAst::Atom(atom) => f
+	    Expr::Atom(atom) => f
 		.debug_tuple("Atom")
 		.field(atom)
 		.finish(),
-	    ParserAst::BiOp(x, op, y) => f
+	    Expr::BiOp(x, op, y) => f
 		.debug_tuple("BiOp")
 		.field(x)
 		.field(op)
 		.field(y)
 		.finish(),
-	    ParserAst::Not(x) => f
+	    Expr::Not(x) => f
 		.debug_tuple("Not")
 		.field(x)
 		.finish(),
@@ -48,10 +48,10 @@ impl Parser {
 	}
     }
     
-    pub fn process(&mut self, min_bp: u8) -> ParserAst {
+    pub fn process(&mut self, min_bp: u8) -> Expr {
 	let val = self.input.pop_front().unwrap();
 	let mut lhs = match val {
-	    Token::Atom(x) => ParserAst::Atom(x),
+	    Token::Atom(x) => Expr::Atom(x),
 	    Token::LeftBracket => {
 		let lhs = self.process(0);
 		assert_eq!(self.next(), Token::RightBracket);
@@ -60,7 +60,7 @@ impl Parser {
 	    Token::Op(Op::Not) => {
 		let ((), r_bp) = prefix_binding_power(Op::Not).unwrap();
  		let rhs = self.process(r_bp);
-		ParserAst::Not(Box::new(rhs))
+		Expr::Not(Box::new(rhs))
 	    },
             t => panic!("bad token: {:?}", t),
 	};
@@ -84,8 +84,8 @@ impl Parser {
 		self.next();
 		let rhs = self.process(r_bp);
 		lhs = match op {
-		    Op::And => ParserAst::BiOp(Box::new(lhs),BiOp::And,Box::new(rhs)),
-		    Op::Or => ParserAst::BiOp(Box::new(lhs),BiOp::Or,Box::new(rhs)),
+		    Op::And => Expr::BiOp(Box::new(lhs),BiOp::And,Box::new(rhs)),
+		    Op::Or => Expr::BiOp(Box::new(lhs),BiOp::Or,Box::new(rhs)),
 		    _ => panic!("unexpected operator"),
 		};
 		
