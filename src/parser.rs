@@ -14,6 +14,7 @@ pub enum ParserAst {
     BiOp(Box<Self>, BiOp, Box<Self>),
     Not(Box<Self>),
 }
+
 impl Debug for ParserAst {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
 	match self {
