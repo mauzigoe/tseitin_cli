@@ -1,5 +1,6 @@
-use crate::grammar::grammar_bool::Expr;
 use std::{fs::File, io::Write, path::Path};
+
+use crate::{parser::{BiOp, ParserAst}, types::Atom};
 
 #[derive(Clone)]
 enum CnfLevel {
@@ -8,14 +9,14 @@ enum CnfLevel {
     Neg,
 }
 
-impl Expr {
+impl ParserAst {
     pub fn is_cnf(&self) -> bool {
         level_transition_is_consistent(self.clone(), CnfLevel::And)
     }
     /// TODO does not work correctly
     pub fn variables(&self) -> Vec<String> {
         match self {
-            Expr::And(x, (), y) => {
+            ParserAst::BiOp(x, BiOp::And | BiOp::Or, y) => {
                 let mut ret: Vec<String> = (*x)
                     .variables()
                     .into_iter()
@@ -25,19 +26,9 @@ impl Expr {
                 ret.dedup();
                 ret
             }
-            Expr::Or(x, (), y) => {
-                let mut ret: Vec<String> = (*x)
-                    .variables()
-                    .into_iter()
-                    .chain((*y).variables())
-                    .collect();
-                ret.sort();
-                ret.dedup();
-                ret
-            }
-            Expr::Neg((), x) => (*x).variables(),
-            Expr::Bracket((), x, ()) => (*x).variables(),
-            Expr::Var(x) => vec![(*x).clone().replace('\n', "")],
+            ParserAst::Not(x) => (*x).variables(),
+            ParserAst::Atom(Atom::Var(x)) => vec![(*x).clone()],
+            ParserAst::Atom(Atom::False | Atom::True) => vec![],
         }
     }
     pub fn to_cnf_file(&self, filename: &str) {
@@ -62,7 +53,7 @@ impl Expr {
         let mut body = "".to_string();
 
         for expr in clauses {
-            let result_dimacs_line = Expr::clause_to_dimacs_line(expr, &variables);
+            let result_dimacs_line = ParserAst::clause_to_dimacs_line(expr, &variables);
             body = format!(
                 "{}{}\n",
                 body.as_str(),
@@ -75,58 +66,51 @@ impl Expr {
     /// TODO erroneuous line break
     /// negated variables
     /// variables index + 1
-    fn clause_to_dimacs_line(expr: Expr, variables: &Vec<String>) -> Result<String, String> {
-        let mut line = Expr::clause_to_dimacs_line_inner(expr, variables)?;
+    fn clause_to_dimacs_line(expr: ParserAst, variables: &Vec<String>) -> Result<String, String> {
+        let mut line = ParserAst::clause_to_dimacs_line_impl(expr, variables)?;
         line.push_str(" 0");
         Ok(line)
     }
-    fn clause_to_dimacs_line_inner(expr: Expr, variables: &Vec<String>) -> Result<String, String> {
+    fn clause_to_dimacs_line_impl(expr: ParserAst, variables: &Vec<String>) -> Result<String, String> {
         match expr {
-            Expr::Or(x, _, y) => {
-                let x_string = Expr::clause_to_dimacs_line_inner(*x, variables)?;
-                let y_string = Expr::clause_to_dimacs_line_inner(*y, variables)?;
+            ParserAst::BiOp(x, BiOp::And, y) => {
+                let x_string = ParserAst::clause_to_dimacs_line_impl(*x, variables)?;
+                let y_string = ParserAst::clause_to_dimacs_line_impl(*y, variables)?;
                 Ok(format!("{} {} ", x_string, y_string))
             }
-            Expr::Neg(_, x) => {
-                let ret = Expr::clause_to_dimacs_line_inner(*x, variables)?;
+            ParserAst::Not(x) => {
+                let ret = ParserAst::clause_to_dimacs_line_impl(*x, variables)?;
                 Ok(format!("-{}", ret))
             }
-            Expr::Var(x) => {
+            ParserAst::Atom(Atom::Var(x)) => {
                 let ret = (1 + variables.iter().position(|r| *r == x).unwrap()).to_string();
-                Ok(ret)
-            }
-            Expr::Bracket(_, x, _) => {
-                let ret = Expr::clause_to_dimacs_line_inner(*x, variables)?;
                 Ok(ret)
             }
             _ => Err("Cnf Format is inconsistent in clause_to_dimacs_line".to_string()),
         }
     }
-    pub fn to_clauses(&self) -> Result<Vec<Expr>, String> {
+    pub fn to_clauses(&self) -> Result<Vec<ParserAst>, String> {
         if !self.is_cnf() {
             return Err("Expression is not in CNF format".to_string());
         }
-        self.to_clauses_impl_and(CnfLevel::And)
+        self.to_clauses_impl(CnfLevel::And)
     }
-    /// TODO Work on order (first check old_level, then self)
-    fn to_clauses_impl_and(&self, old_level: CnfLevel) -> Result<Vec<Expr>, String> {
+    fn to_clauses_impl(&self, old_level: CnfLevel) -> Result<Vec<ParserAst>, String> {
         match (self.clone(), old_level.clone()) {
-            (Expr::And(x, (), y), CnfLevel::And) => {
-                let mut clause_x = x.to_clauses_impl_and(CnfLevel::And)?;
-                let mut clause_y = y.to_clauses_impl_and(CnfLevel::And)?;
+            (ParserAst::BiOp(x, BiOp::And, y), CnfLevel::And) => {
+                let mut clause_x = x.to_clauses_impl(CnfLevel::And)?;
+                let mut clause_y = y.to_clauses_impl(CnfLevel::And)?;
                 clause_x.append(&mut clause_y);
                 Ok(clause_x)
             }
-            _ => Ok(vec![self.to_clauses_impl_or(CnfLevel::And)?]),
-        }
-    }
-    /// TODO Work on order (first check old_level, then self)
-    fn to_clauses_impl_or(&self, old_level: CnfLevel) -> Result<Expr, String> {
-        match (self.clone(), old_level.clone()) {
-            (Expr::Or(_, (), _), CnfLevel::And | CnfLevel::Or) => Ok(self.clone()),
-            (Expr::Bracket((), x, ()), _) => Ok(x.to_clauses_impl_or(CnfLevel::Neg)?),
-            (Expr::Neg((), _), _) => Ok(self.clone()),
-            (Expr::Var(_), _) => Ok(self.clone()),
+	    (ParserAst::BiOp(x, BiOp::Or, y), CnfLevel::Or | CnfLevel::And) => {
+                let mut clause_x = x.to_clauses_impl(CnfLevel::Or)?;
+                let mut clause_y = y.to_clauses_impl(CnfLevel::Or)?;
+                clause_x.append(&mut clause_y);
+		Ok(clause_x)
+	    },
+            (ParserAst::Not(_), _) => Ok(vec![self.clone()]),
+            (ParserAst::Atom(_), _) => Ok(vec![self.clone()]),
             _ => Err(format!(
                 "Cnf is inconsitent. Error in Expression {:?}",
                 self
@@ -135,31 +119,29 @@ impl Expr {
     }
 }
 
-fn level_transition_is_consistent(expr: Expr, old_level: CnfLevel) -> bool {
+fn level_transition_is_consistent(expr: ParserAst, old_level: CnfLevel) -> bool {
     match old_level {
         CnfLevel::And => match expr {
-            Expr::And(x, _, y) => {
+            ParserAst::BiOp(x, BiOp::And, y) => {
                 level_transition_is_consistent(*x, CnfLevel::And)
                     & level_transition_is_consistent(*y, CnfLevel::And)
             }
-            Expr::Or(x, _, y) => {
+            ParserAst::BiOp(x, BiOp::Or, y) => {
                 level_transition_is_consistent(*x, CnfLevel::Or)
                     & level_transition_is_consistent(*y, CnfLevel::Or)
             }
-            Expr::Bracket(_, x, _) => level_transition_is_consistent(*x, old_level),
-            Expr::Neg(_, x) => level_transition_is_consistent(*x, CnfLevel::Neg),
-            Expr::Var(_) => true,
+            ParserAst::Not(x) => level_transition_is_consistent(*x, CnfLevel::Neg),
+            ParserAst::Atom(_) => true,
         },
         CnfLevel::Or => match expr {
-            Expr::And(_, _, _) => false,
-            Expr::Or(x, _, y) => {
+            ParserAst::BiOp(_, BiOp::And, _) => false,
+            ParserAst::BiOp(x, BiOp::Or, y) => {
                 level_transition_is_consistent(*x, CnfLevel::Or)
                     & level_transition_is_consistent(*y, CnfLevel::Or)
             }
-            Expr::Bracket(_, x, _) => level_transition_is_consistent(*x, old_level),
-            Expr::Neg(_, x) => level_transition_is_consistent(*x, CnfLevel::Neg),
-            Expr::Var(_) => true,
+            ParserAst::Not(x) => level_transition_is_consistent(*x, CnfLevel::Neg),
+            ParserAst::Atom(_) => true,
         },
-        CnfLevel::Neg => matches!(expr, Expr::Var(_)),
+        CnfLevel::Neg => matches!(expr, ParserAst::Atom(_)),
     }
 }
