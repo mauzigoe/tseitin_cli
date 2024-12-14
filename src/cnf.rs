@@ -73,7 +73,7 @@ impl ParserAst {
     }
     fn clause_to_dimacs_line_impl(expr: ParserAst, variables: &Vec<String>) -> Result<String, String> {
         match expr {
-            ParserAst::BiOp(x, BiOp::And, y) => {
+            ParserAst::BiOp(x, BiOp::Or, y) => {
                 let x_string = ParserAst::clause_to_dimacs_line_impl(*x, variables)?;
                 let y_string = ParserAst::clause_to_dimacs_line_impl(*y, variables)?;
                 Ok(format!("{} {} ", x_string, y_string))
@@ -103,14 +103,9 @@ impl ParserAst {
                 clause_x.append(&mut clause_y);
                 Ok(clause_x)
             }
-	    (ParserAst::BiOp(x, BiOp::Or, y), CnfLevel::Or | CnfLevel::And) => {
-                let mut clause_x = x.to_clauses_impl(CnfLevel::Or)?;
-                let mut clause_y = y.to_clauses_impl(CnfLevel::Or)?;
-                clause_x.append(&mut clause_y);
-		Ok(clause_x)
-	    },
-            (ParserAst::Not(_), _) => Ok(vec![self.clone()]),
-            (ParserAst::Atom(_), _) => Ok(vec![self.clone()]),
+            (ParserAst::BiOp(_, BiOp::Or, _), CnfLevel::Or | CnfLevel::And)
+		| (ParserAst::Not(_), _) 
+		| (ParserAst::Atom(_), _) => Ok(vec![self.clone()]),
             _ => Err(format!(
                 "Cnf is inconsitent. Error in Expression {:?}",
                 self
