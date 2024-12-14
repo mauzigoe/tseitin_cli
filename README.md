@@ -1,4 +1,4 @@
-# Tseitin CLI
+# Tseitin Cli
 
 Tseitin CLI enables you to transform boolean equations into Conjunctive Normal Form (CNF) with the [Tseitin-Transformation](https://en.wikipedia.org/wiki/Tseytin_transformation) via a command line interface.
 
@@ -8,6 +8,8 @@ Following general features are to be added:
 - documentation
 - testing
 - `--help`
-- Precedence of operators
+- precedence of operators
 - other operators (e.g. implication `=>`)
-- show relation between new variables from tseitin expression and the expression they represent 
+- log messages for debugging
+- show relation between new variables from tseitin expression and the expression they represent
+
