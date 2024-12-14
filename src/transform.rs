@@ -1,27 +1,25 @@
-use crate::grammar::grammar_bool::Expr;
+use crate::{parser::{BiOp, ParserAst}, types::Atom};
 
-impl From<Expr> for String {
-    fn from(value: Expr) -> Self {
+impl From<ParserAst> for String {
+    fn from(value: ParserAst) -> Self {
         match value {
-            Expr::And(x, _, y) => {
+            ParserAst::BiOp(x, BiOp::And, y) => {
                 let x: String = (*x).into();
                 let y: String = (*y).into();
                 format!("({} & {})", x, y)
             }
-            Expr::Or(x, _, y) => {
+            ParserAst::BiOp(x, BiOp::Or, y) => {
                 let x: String = (*x).into();
                 let y: String = (*y).into();
                 format!("({} | {})", x, y)
             }
-            Expr::Bracket(_, x, _) => {
-                let x: String = (*x).into();
-                format!("({})", x)
-            }
-            Expr::Neg(_, x) => {
+            ParserAst::Not(x) => {
                 let x: String = (*x).into();
                 format!("!({})", x)
             }
-            Expr::Var(x) => x,
+            ParserAst::Atom(Atom::Var(x)) => x,
+            ParserAst::Atom(Atom::False) => "False".to_string(),
+            ParserAst::Atom(Atom::True) => "True".to_string(),
         }
     }
 }
