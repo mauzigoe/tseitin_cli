@@ -51,7 +51,7 @@ pub fn scan_complete(input: String) -> Result<VecDeque<Token>,LexerErrorCode> {
 	let token_res = scan_next_token(&mut chars);
 	match token_res {
 	    Ok(token) => {
-		println!("Token: {:?}", token);
+		// println!("Token: {:?}", token);
 		match token {
 		    Token::Eof => break,
 		    _ => store.push_back(token),
