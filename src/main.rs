@@ -1,5 +1,5 @@
 use std::io::Write;
-use tseitin::{lexer::scan_complete, parser::Parser, algorithm::tseitin_encode};
+use tseitin::{lexer::lex, parser::Parser, algorithm::tseitin_encode};
 
 fn main() {
     let stdin = std::io::stdin();
@@ -16,7 +16,7 @@ fn main() {
         }
 
 	let string = input.to_string();
-	let token = scan_complete(string).unwrap();
+	let token = lex(string).unwrap();
 	
 	let mut parser = Parser::new(token);
 	let ast = parser.process(0);

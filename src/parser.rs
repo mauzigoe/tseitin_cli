@@ -2,12 +2,14 @@ use std::{collections::VecDeque, fmt::{Debug, Formatter, Result}};
 
 use crate::{types::{Atom, Op},lexer::Token};
 
+/// Representation of the binary operators.
 #[derive(Clone, Copy, Debug,Eq,PartialEq)]
 pub enum BiOp {
     And,
     Or,
 }
 
+/// Representation of a boolean expression with their sequence of operations.
 #[derive(Clone, PartialEq, Eq)]
 pub enum Expr {
     Atom(Atom),

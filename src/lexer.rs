@@ -2,12 +2,14 @@ use std::{collections::VecDeque, iter::Peekable, str::Chars};
 
 use crate::types::{Atom, Op};
 
+/// Representation of possible errors occuring during lexical analysis
 #[derive(Clone,Debug,Eq,PartialEq)]
 pub enum LexerErrorCode {
     UnknownToken(String),
     NextCharNotPeekable,
 }
 
+/// Tokens used for lexing
 #[derive(Clone,Debug,Eq,PartialEq)]
 pub enum Token {
     Atom(Atom),
@@ -41,7 +43,9 @@ fn scan_next_token<'a>(iter: &mut Peekable<Chars>) -> Result<Token,LexerErrorCod
 	}
     }
 }
-pub fn scan_complete(input: String) -> Result<VecDeque<Token>,LexerErrorCode> {
+
+/// Perform a lexical analysis of a boolean equation represented by `String`.
+pub fn lex(input: String) -> Result<VecDeque<Token>,LexerErrorCode> {
     let mut store = VecDeque::<Token>::new();
 
 

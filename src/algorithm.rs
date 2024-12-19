@@ -1,6 +1,6 @@
 use crate::{types::Atom, parser::{Expr, BiOp}};
 
-/// Tseitin encode [`Expr`] to a [`CNF`](https://en.wikipedia.org/wiki/Conjunctive_normal_form)-conform [`Expr`]. 
+/// Perform tseitin encoding of [`Expr`]. Returns a [`CNF`](https://en.wikipedia.org/wiki/Conjunctive_normal_form)-conform [`Expr`]. 
 pub fn tseitin_encode(expr_input: Expr) -> Result<Expr, String> {
     let (c, optional_tseitin_expr) = tseitin_encode_inner(expr_input, &mut 0);
 
@@ -55,8 +55,8 @@ fn tseitin_encode_inner(expr: Expr, var_count: &mut usize) -> (Atom, Option<Expr
     }
 }
 
-/// returns the cnf-conform expression `c = a & b` ("`c` is true iff `a & b`)
-fn equivalent_and_expr_cnf(c: Atom, a: Atom, b: Atom) -> Expr {
+/// Return the cnf-conform [`Expr`] for `c <==> a & b` ("`c` is true iff `a & b`)
+pub fn equivalent_and_expr_cnf(c: Atom, a: Atom, b: Atom) -> Expr {
     let c = Expr::Atom(c.clone());
     let a = Expr::Atom(a.clone());
     let b = Expr::Atom(b.clone());
@@ -87,8 +87,8 @@ fn equivalent_and_expr_cnf(c: Atom, a: Atom, b: Atom) -> Expr {
     )
 }
 
-/// returns the cnf-conform expression `c = a | b`
-fn equivalent_or_expr_cnf(c: Atom, a: Atom, b: Atom) -> Expr {
+/// Return the cnf-conform [`Expr`] for `c <==> a | b` ("`c` is true iff `a | b`)
+pub fn equivalent_or_expr_cnf(c: Atom, a: Atom, b: Atom) -> Expr {
     let c = Expr::Atom(c.clone());
     let a = Expr::Atom(a.clone());
     let b = Expr::Atom(b.clone());
@@ -121,7 +121,7 @@ fn equivalent_or_expr_cnf(c: Atom, a: Atom, b: Atom) -> Expr {
     )
 }
     
-/// returns the cnf-conform expression `c=!a`
+/// Return the cnf-conform [`Expr`] for `c <==> !a` (`c` is true iff `!a`)
 fn equivalent_not_expr_cnf(c: Atom, a: Atom) -> Expr {
     let c = Expr::Atom(c.clone());
     let a = Expr::Atom(a.clone());

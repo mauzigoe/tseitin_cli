@@ -4,4 +4,3 @@ pub mod parser;
 pub mod algorithm;
 pub mod transform;
 pub mod cnf;
-

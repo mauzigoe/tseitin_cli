@@ -10,9 +10,11 @@ enum CnfLevel {
 }
 
 impl Expr {
+    /// Return if [`Expr`] is in [CNF](https://en.wikipedia.org/wiki/Conjunctive_normal_form)-format.
     pub fn is_cnf(&self) -> bool {
-        level_transition_is_consistent(self.clone(), CnfLevel::And)
+        is_cnf_impl(self.clone(), CnfLevel::And)
     }
+    /// Returns a list of variable names.
     pub fn variables(&self) -> Vec<String> {
         match self {
             Expr::BiOp(x, BiOp::And | BiOp::Or, y) => {
@@ -30,14 +32,15 @@ impl Expr {
             Expr::Atom(Atom::False | Atom::True) => vec![],
         }
     }
+    /// Write [`Self`] to file located at `filename` encoded in dimacs-format.
     pub fn to_cnf_file(&self, filename: &str) {
         let path = Path::new(filename);
         let mut file = File::create(path).expect("creating file failed");
 
-        let content = self.to_cnf_string().unwrap();
+        let content = self.to_dimacs_string().unwrap();
         file.write_all(content.as_bytes()).unwrap();
     }
-    pub fn to_cnf_string(&self) -> Result<String, String> {
+    fn to_dimacs_string(&self) -> Result<String, String> {
         let variables = self.variables();
 
         let clauses = self.to_clauses()?;
@@ -82,7 +85,7 @@ impl Expr {
             _ => Err("Cnf Format is inconsistent in clause_to_dimacs_line".to_string()),
         }
     }
-    pub fn to_clauses(&self) -> Result<Vec<Expr>, String> {
+    fn to_clauses(&self) -> Result<Vec<Expr>, String> {
         if !self.is_cnf() {
             return Err("Expression is not in CNF format".to_string());
         }
@@ -107,27 +110,27 @@ impl Expr {
     }
 }
 
-fn level_transition_is_consistent(expr: Expr, old_level: CnfLevel) -> bool {
+fn is_cnf_impl(expr: Expr, old_level: CnfLevel) -> bool {
     match old_level {
         CnfLevel::And => match expr {
             Expr::BiOp(x, BiOp::And, y) => {
-                level_transition_is_consistent(*x, CnfLevel::And)
-                    & level_transition_is_consistent(*y, CnfLevel::And)
+                is_cnf_impl(*x, CnfLevel::And)
+                    & is_cnf_impl(*y, CnfLevel::And)
             }
             Expr::BiOp(x, BiOp::Or, y) => {
-                level_transition_is_consistent(*x, CnfLevel::Or)
-                    & level_transition_is_consistent(*y, CnfLevel::Or)
+                is_cnf_impl(*x, CnfLevel::Or)
+                    & is_cnf_impl(*y, CnfLevel::Or)
             }
-            Expr::Not(x) => level_transition_is_consistent(*x, CnfLevel::Neg),
+            Expr::Not(x) => is_cnf_impl(*x, CnfLevel::Neg),
             Expr::Atom(_) => true,
         },
         CnfLevel::Or => match expr {
             Expr::BiOp(_, BiOp::And, _) => false,
             Expr::BiOp(x, BiOp::Or, y) => {
-                level_transition_is_consistent(*x, CnfLevel::Or)
-                    & level_transition_is_consistent(*y, CnfLevel::Or)
+                is_cnf_impl(*x, CnfLevel::Or)
+                    & is_cnf_impl(*y, CnfLevel::Or)
             }
-            Expr::Not(x) => level_transition_is_consistent(*x, CnfLevel::Neg),
+            Expr::Not(x) => is_cnf_impl(*x, CnfLevel::Neg),
             Expr::Atom(_) => true,
         },
         CnfLevel::Neg => matches!(expr, Expr::Atom(_)),

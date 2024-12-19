@@ -1,13 +1,13 @@
 #[cfg(test)]
 mod tests {
-    use tseitin::lexer::{scan_complete, Token};
+    use tseitin::lexer::{lex, Token};
     use tseitin::types::{Op, Atom};
 
     
     #[test]
     fn test_lexer() {
 	let input = " aob_1 &(!Av1d | 1) | 0 \n".to_string();
-	let token_store = scan_complete(input).unwrap();
+	let token_store = lex(input).unwrap();
 
 	let mut iter = token_store.iter();
 
