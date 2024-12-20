@@ -2,14 +2,16 @@ use std::io::Write;
 use tseitin::{algorithm::tseitin_encode, lexer::lex, parser::{Expr, Parser}};
 use clap::Parser as ClapParser;
 
+/// Tseiting encoding for boolean expresions (e.g. `a & ( !b | c )`)
 #[derive(ClapParser)]
 struct Args {
-    /// Run benchmark
+    /// Store tseitin encoding in path `output_cnf`. Stored in Dimacs format.
     #[arg(short,long)]
     output_cnf: Option<String>,
     /// Open a console session
-    #[arg(short, long)]
+    #[arg(short, long, default_value_t = true)]
     console: bool,
+    /// Specify boolean expression for tseitin encoding 
     #[arg(short, long)]
     input: Option<String>,
 }
