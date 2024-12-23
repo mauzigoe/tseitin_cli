@@ -17,7 +17,8 @@ impl From<Expr> for String {
                 let x: String = (*x).into();
                 format!("!({})", x)
             }
-            Expr::Atom(Atom::Var(x)) => x,
+	    // to be fixed
+            Expr::Atom(Atom::Var(x)) => format!("{}",x),
             Expr::Atom(Atom::False) => "False".to_string(),
             Expr::Atom(Atom::True) => "True".to_string(),
         }

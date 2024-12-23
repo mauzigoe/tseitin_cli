@@ -7,7 +7,7 @@ pub enum Op {
 
 #[derive(Clone,Debug,Eq,PartialEq)]
 pub enum Atom {
-    Var(String),
+    Var(usize),
     True,
     False,
 }

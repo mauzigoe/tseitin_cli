@@ -1,36 +1,29 @@
 use std::{fs::File, io::Write, path::Path};
 
-use crate::{parser::{BiOp, Expr}, types::Atom};
+use crate::expr::VarStore;
 
-#[derive(Clone)]
-enum CnfLevel {
-    And,
-    Or,
-    Neg,
+pub struct Cnf {
+    // better?
+    clauses: Vec<Vec<i32>>,
+    var_store: VarStore,
 }
 
-impl Expr {
-    /// Return if [`Expr`] is in [CNF](https://en.wikipedia.org/wiki/Conjunctive_normal_form)-format.
-    pub fn is_cnf(&self) -> bool {
-        is_cnf_impl(self.clone(), CnfLevel::And)
+impl Cnf {
+    pub fn new(var_store: VarStore) -> Self {
+	let clauses: Vec<Vec<i32>> = Vec::new();
+	Self {
+	    clauses,
+	    var_store,
+	}
     }
-    /// Returns a list of variable names.
-    pub fn variables(&self) -> Vec<String> {
-        match self {
-            Expr::BiOp(x, BiOp::And | BiOp::Or, y) => {
-                let mut ret: Vec<String> = (*x)
-                    .variables()
-                    .into_iter()
-                    .chain((*y).variables())
-                    .collect();
-                ret.sort();
-                ret.dedup();
-                ret
-            }
-            Expr::Not(x) => (*x).variables(),
-            Expr::Atom(Atom::Var(x)) => vec![(*x).clone()],
-            Expr::Atom(Atom::False | Atom::True) => vec![],
-        }
+    pub fn var_store(&self) -> &VarStore {
+	&self.var_store
+    }
+    pub fn mut_var_store(&mut self) -> &mut VarStore {
+	&mut self.var_store
+    }
+    pub fn add_clause(&mut self, clause: Vec<i32>) {
+	self.clauses.push(clause);
     }
     /// Write [`Self`] to file located at `filename` encoded in dimacs-format.
     pub fn to_cnf_file(&self, filename: &str) {
@@ -41,98 +34,23 @@ impl Expr {
         file.write_all(content.as_bytes()).unwrap();
     }
     fn to_dimacs_string(&self) -> Result<String, String> {
-        let variables = self.variables();
-
-        let clauses = self.to_clauses()?;
-
-        let no_var = variables.len();
-        let no_clauses = clauses.len();
+        let no_var = self.var_store.n_var();
+        let no_clauses = self.clauses.len();
 
         let header = format!("p cnf {} {}\n", no_var, no_clauses);
         let mut body = "".to_string();
 
-        for expr in clauses {
-            let result_dimacs_line = Expr::clause_to_dimacs_line(expr, &variables);
-            body = format!(
-                "{}{}\n",
-                body.as_str(),
-                result_dimacs_line.clone()?.as_str()
-            );
+        for clause in self.clauses.iter() {
+	    let dimacs_line = Cnf::to_dimacs_line(clause)?;
+            body.push_str(format!("{}\n",dimacs_line).as_str());
         }
 
         Ok(format!("{}{}", header.as_str(), body.as_str()))
     }
-    fn clause_to_dimacs_line(expr: Expr, variables: &Vec<String>) -> Result<String, String> {
-        let mut line = Expr::clause_to_dimacs_line_impl(expr, variables)?;
-        line.push_str(" 0");
-        Ok(line)
-    }
-    fn clause_to_dimacs_line_impl(expr: Expr, variables: &Vec<String>) -> Result<String, String> {
-        match expr {
-            Expr::BiOp(x, BiOp::Or, y) => {
-                let x_string = Expr::clause_to_dimacs_line_impl(*x, variables)?;
-                let y_string = Expr::clause_to_dimacs_line_impl(*y, variables)?;
-                Ok(format!("{} {} ", x_string, y_string))
-            }
-            Expr::Not(x) => {
-                let ret = Expr::clause_to_dimacs_line_impl(*x, variables)?;
-                Ok(format!("-{}", ret))
-            }
-            Expr::Atom(Atom::Var(x)) => {
-                let ret = (1 + variables.iter().position(|r| *r == x).unwrap()).to_string();
-                Ok(ret)
-            }
-            _ => Err("Cnf Format is inconsistent in clause_to_dimacs_line".to_string()),
-        }
-    }
-    fn to_clauses(&self) -> Result<Vec<Expr>, String> {
-        if !self.is_cnf() {
-            return Err("Expression is not in CNF format".to_string());
-        }
-        self.to_clauses_impl(CnfLevel::And)
-    }
-    fn to_clauses_impl(&self, old_level: CnfLevel) -> Result<Vec<Expr>, String> {
-        match (self.clone(), old_level.clone()) {
-            (Expr::BiOp(x, BiOp::And, y), CnfLevel::And) => {
-                let mut clause_x = x.to_clauses_impl(CnfLevel::And)?;
-                let mut clause_y = y.to_clauses_impl(CnfLevel::And)?;
-                clause_x.append(&mut clause_y);
-                Ok(clause_x)
-            }
-            (Expr::BiOp(_, BiOp::Or, _), CnfLevel::Or | CnfLevel::And)
-		| (Expr::Not(_), _) 
-		| (Expr::Atom(_), _) => Ok(vec![self.clone()]),
-            _ => Err(format!(
-                "Cnf is inconsitent. Error in Expression {:?}",
-                self
-            )),
-        }
-    }
-}
-
-fn is_cnf_impl(expr: Expr, old_level: CnfLevel) -> bool {
-    match old_level {
-        CnfLevel::And => match expr {
-            Expr::BiOp(x, BiOp::And, y) => {
-                is_cnf_impl(*x, CnfLevel::And)
-                    & is_cnf_impl(*y, CnfLevel::And)
-            }
-            Expr::BiOp(x, BiOp::Or, y) => {
-                is_cnf_impl(*x, CnfLevel::Or)
-                    & is_cnf_impl(*y, CnfLevel::Or)
-            }
-            Expr::Not(x) => is_cnf_impl(*x, CnfLevel::Neg),
-            Expr::Atom(_) => true,
-        },
-        CnfLevel::Or => match expr {
-            Expr::BiOp(_, BiOp::And, _) => false,
-            Expr::BiOp(x, BiOp::Or, y) => {
-                is_cnf_impl(*x, CnfLevel::Or)
-                    & is_cnf_impl(*y, CnfLevel::Or)
-            }
-            Expr::Not(x) => is_cnf_impl(*x, CnfLevel::Neg),
-            Expr::Atom(_) => true,
-        },
-        CnfLevel::Neg => matches!(expr, Expr::Atom(_)),
+    fn to_dimacs_line(clause: &Vec<i32>) -> Result<String, String> {
+	let mut ret = String::new();
+	clause.iter().for_each(|x| ret.push_str(format!("{} ",x).as_str()));
+	ret.push_str("0");
+	Ok(ret)
     }
 }

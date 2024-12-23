@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, iter::Peekable, str::Chars};
 
-use crate::types::{Atom, Op};
+use crate::{expr::VarStore, types::{Atom, Op}};
 
 /// Representation of possible errors occuring during lexical analysis
 #[derive(Clone,Debug,Eq,PartialEq)]
@@ -19,7 +19,7 @@ pub enum Token {
     Eof,
 }
 
-fn scan_next_token<'a>(iter: &mut Peekable<Chars>) -> Result<Token,LexerErrorCode> {
+fn scan_next_token<'a>(iter: &mut Peekable<Chars>, var_list: &mut VarStore) -> Result<Token,LexerErrorCode> {
     let next = iter.skip_while(|&x| x.is_ascii_whitespace() || x == '\n').next().ok_or(LexerErrorCode::NextCharNotPeekable)?;
     match next {
 	'a' ..= 'z' | 'A' ..= 'Z' => {
@@ -27,7 +27,14 @@ fn scan_next_token<'a>(iter: &mut Peekable<Chars>) -> Result<Token,LexerErrorCod
 	    while let Some(x) = iter.next_if(|x| x.is_ascii_alphanumeric() || (x == &'_')) {
 		    var_name.push(x);
 	    }
-;	    return Ok(Token::Atom(Atom::Var(var_name)));
+	    match var_list.try_get_by_string(&var_name) {
+		Some(index) => return Ok(Token::Atom(Atom::Var(index))),
+		None => {
+		    let index = var_list.n_var() + 1;
+		    var_list.insert(var_name);
+		    Ok(Token::Atom(Atom::Var(index)))
+		}
+	    }
 	},
 	'(' => Ok(Token::LeftBracket),
 	')' => Ok(Token::RightBracket),
@@ -45,14 +52,14 @@ fn scan_next_token<'a>(iter: &mut Peekable<Chars>) -> Result<Token,LexerErrorCod
 }
 
 /// Perform a lexical analysis of a boolean equation represented by `String`.
-pub fn lex(input: String) -> Result<VecDeque<Token>,LexerErrorCode> {
+pub fn lex(input: String) -> Result<(VecDeque<Token>, VarStore),LexerErrorCode> {
     let mut store = VecDeque::<Token>::new();
-
+    let mut store_var = VarStore::new();
 
     let mut chars = input.chars().peekable();
     
     loop {
-	let token_res = scan_next_token(&mut chars);
+	let token_res = scan_next_token(&mut chars, &mut store_var);
 	match token_res {
 	    Ok(token) => {
 		// println!("Token: {:?}", token);
@@ -65,6 +72,6 @@ pub fn lex(input: String) -> Result<VecDeque<Token>,LexerErrorCode> {
 	    Err(x) => return Err(x),
 	}
     };
-    Ok(store)
+    Ok((store, store_var))
 }
 
