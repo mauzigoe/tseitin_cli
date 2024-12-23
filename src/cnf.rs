@@ -33,7 +33,7 @@ impl Cnf {
         let content = self.to_dimacs_string().unwrap();
         file.write_all(content.as_bytes()).unwrap();
     }
-    fn to_dimacs_string(&self) -> Result<String, String> {
+    pub fn to_dimacs_string(&self) -> Result<String, String> {
         let no_var = self.var_store.n_var();
         let no_clauses = self.clauses.len();
 

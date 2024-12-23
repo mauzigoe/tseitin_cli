@@ -8,6 +8,9 @@ struct Args {
     /// Store tseitin encoding in path `output_cnf`. Stored in Dimacs format.
     #[arg(short,long)]
     output_cnf: Option<String>,
+    /// Store (Variable, Literal)-Map  in path `output_csv`.
+    #[arg(long)]
+    output_csv: Option<String>,
     /// Open a console session
     #[arg(short, long, default_value_t = true)]
     console: bool,
@@ -35,13 +38,15 @@ fn main() {
     
     let stdin = std::io::stdin();
 
-    let output: String = args.output_cnf.unwrap_or("test.cnf".to_string());
+    let output_cnf: String = args.output_cnf.unwrap_or("test.cnf".to_string());
+    let output_csv: String = args.output_csv.unwrap_or("test.csv".to_string());
 
     if let Some(input) = args.input {
 	if let Some((expr,var_store)) = try_to_expr_from(input) {
 	    // add var_store
 	    let tseitin_expr =  tseitin_encode(&expr, var_store);
-	    tseitin_expr.to_cnf_file(output.as_str());
+	    tseitin_expr.to_cnf_file(output_cnf.as_str());
+	    tseitin_expr.var_store().to_csv_file(output_csv.as_str());
 	}
     }
 
@@ -59,7 +64,8 @@ fn main() {
 	    };
 	    
 	    let tseitin_expr = tseitin_encode(&ast, var_store);		
-	    tseitin_expr.to_cnf_file(output.as_str());
+	    tseitin_expr.to_cnf_file(output_cnf.as_str());
+	    tseitin_expr.var_store().to_csv_file(output_csv.as_str());
 	}
     }
 }
