@@ -1,5 +1,5 @@
 use std::io::Write;
-use tseitin::{algorithm::tseitin_encode, lexer::lex, parser::{Expr, Parser}};
+use tseitin::{algorithm::tseitin_encode, var::VarStore, lexer::lex, expr::Expr, parser::Parser};
 use clap::Parser as ClapParser;
 
 /// Tseiting encoding for boolean expresions (e.g. `a & ( !b | c )`)
@@ -8,6 +8,9 @@ struct Args {
     /// Store tseitin encoding in path `output_cnf`. Stored in Dimacs format.
     #[arg(short,long)]
     output_cnf: Option<String>,
+    /// Store (Variable, Literal)-Map  in path `output_csv`.
+    #[arg(long)]
+    output_csv: Option<String>,
     /// Open a console session
     #[arg(short, long, default_value_t = true)]
     console: bool,
@@ -16,18 +19,17 @@ struct Args {
     input: Option<String>,
 }
 
-fn try_to_expr_from(input: String) -> Option<Expr> {
+fn try_to_expr_from(input: String) -> Option<(Expr, VarStore)> {
         let input = input.trim();
         if input.is_empty() {
             return None;
         }
 
 	let string = input.to_string();
-	let token = lex(string).unwrap();
+	let (token, var_store) = lex(string).unwrap();
 	
 	let mut parser = Parser::new(token);
-	Some(parser.process(0))
-
+	Some((parser.process(0), var_store))
 }
 
 fn main() {
@@ -36,21 +38,15 @@ fn main() {
     
     let stdin = std::io::stdin();
 
-    let output: String = args.output_cnf.unwrap_or("test.cnf".to_string());
+    let output_cnf: String = args.output_cnf.unwrap_or("test.cnf".to_string());
+    let output_csv: String = args.output_csv.unwrap_or("test.csv".to_string());
 
     if let Some(input) = args.input {
-	if let Some(expr) = try_to_expr_from(input) {
-	    match tseitin_encode(expr) {
-		Ok(tseitin_expr) => {
-		    let tseitin_is_cnf = tseitin_expr.is_cnf();
-		    if tseitin_is_cnf {
-			tseitin_expr.to_cnf_file(output.as_str());
-		    }
-		},
-		Err(errs) => {
-		    println!("{:?}\n", errs);
-		},
-	    };
+	if let Some((expr,var_store)) = try_to_expr_from(input) {
+	    // add var_store
+	    let tseitin_expr =  tseitin_encode(&expr, var_store);
+	    tseitin_expr.to_cnf_file(output_cnf.as_str());
+	    tseitin_expr.var_store().to_csv_file(output_csv.as_str());
 	}
     }
 
@@ -62,22 +58,14 @@ fn main() {
 	    let mut input = String::new();
 	    stdin.read_line(&mut input).unwrap();
 
-	    let ast = match try_to_expr_from(input) {
+	    let (ast, var_store) = match try_to_expr_from(input) {
 		Some(expr) => expr,
 		None => break,
 	    };
 	    
-	    match tseitin_encode(ast) {
-		Ok(tseitin_expr) => {
-		    let tseitin_is_cnf = tseitin_expr.is_cnf();
-		    if tseitin_is_cnf {
-			tseitin_expr.to_cnf_file(output.as_str());
-		    }
-		},
-		Err(errs) => {
-		    println!("{:?}\n", errs);
-		},
-	    };
+	    let tseitin_expr = tseitin_encode(&ast, var_store);		
+	    tseitin_expr.to_cnf_file(output_cnf.as_str());
+	    tseitin_expr.var_store().to_csv_file(output_csv.as_str());
 	}
     }
 }

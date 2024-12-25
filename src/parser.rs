@@ -1,42 +1,6 @@
-use std::{collections::VecDeque, fmt::{Debug, Formatter, Result}};
+use std::collections::VecDeque;
 
-use crate::{types::{Atom, Op},lexer::Token};
-
-/// Representation of the binary operators.
-#[derive(Clone, Copy, Debug,Eq,PartialEq)]
-pub enum BiOp {
-    And,
-    Or,
-}
-
-/// Representation of a boolean expression with their sequence of operations.
-#[derive(Clone, PartialEq, Eq)]
-pub enum Expr {
-    Atom(Atom),
-    BiOp(Box<Self>, BiOp, Box<Self>),
-    Not(Box<Self>),
-}
-
-impl Debug for Expr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-	match self {
-	    Expr::Atom(atom) => f
-		.debug_tuple("Atom")
-		.field(atom)
-		.finish(),
-	    Expr::BiOp(x, op, y) => f
-		.debug_tuple("BiOp")
-		.field(x)
-		.field(op)
-		.field(y)
-		.finish(),
-	    Expr::Not(x) => f
-		.debug_tuple("Not")
-		.field(x)
-		.finish(),
-	}
-    }
-}
+use crate::{expr::{BiOp, Expr}, lexer::Token, types::Op};
 
 pub struct Parser {
     input: VecDeque::<Token>,
