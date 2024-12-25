@@ -1,4 +1,4 @@
-# Tseitin Cli
+# Tseitin Transformation CLI
 
 Tseitin CLI enables you to transform boolean equations into Conjunctive Normal Form (CNF) with the [Tseitin-Transformation](https://en.wikipedia.org/wiki/Tseytin_transformation) via a command line interface.
 
