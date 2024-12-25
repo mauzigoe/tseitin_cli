@@ -7,7 +7,9 @@ pub struct Cnf {
     var_store: VarStore,
 }
 
+/// Data structure to store [`CNF`](https://en.wikipedia.org/wiki/Conjunctive_normal_form)-conform [`crate::expr::Expr`]
 impl Cnf {
+    /// Create new [`Cnf`]
     pub fn new(var_store: VarStore) -> Self {
 	let clauses: Vec<Vec<i32>> = Vec::new();
 	Self {
@@ -15,12 +17,15 @@ impl Cnf {
 	    var_store,
 	}
     }
+    /// Return reference to `var_store`
     pub fn var_store(&self) -> &VarStore {
 	&self.var_store
     }
+    /// Return mutable reference to `var_store`
     pub fn mut_var_store(&mut self) -> &mut VarStore {
 	&mut self.var_store
     }
+    /// Adds clauses
     pub fn add_clause(&mut self, clause: Vec<i32>) {
 	self.clauses.push(clause);
     }
@@ -32,7 +37,7 @@ impl Cnf {
         let content = self.to_dimacs_string().unwrap();
         file.write_all(content.as_bytes()).unwrap();
     }
-    pub fn to_dimacs_string(&self) -> Result<String, String> {
+    fn to_dimacs_string(&self) -> Result<String, String> {
         let no_var = self.var_store.n_var();
         let no_clauses = self.clauses.len();
 

@@ -2,11 +2,12 @@ use std::{collections::BTreeMap, fs::File, io::Write, path::Path};
 
 pub struct VarStore(BTreeMap<String,usize>);
 
+/// Implements storage for mappings between variable name to integers. Integer are used as identifier in [`crate::expr::Expr`],[`crate::cnf::Cnf`] for the variable names from a parsed boolean formula.
 impl VarStore {
     pub fn new() -> Self {
 	VarStore(BTreeMap::<String,usize>::new())
     }
-    /// Returns a list of variable names.
+    /// Returns a number of variable stored.
     pub fn n_var(&self) -> usize {
 	self.0.len()
     }
@@ -18,7 +19,7 @@ impl VarStore {
     pub fn contains(& self, var_name: &String) -> bool {
 	self.0.contains_key(var_name)
     }
-    /// Adds `var_name` to [`VarStore`]
+    /// Adds new `variable` to [`VarStore`] and returns its stored index
     pub fn insert_and_get_index(&mut self, var_name: String) -> usize {
 	let index_if_new = self.n_var() + 1;
 	if self.0.contains_key(&var_name) {
