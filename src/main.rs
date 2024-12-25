@@ -1,5 +1,5 @@
 use std::io::Write;
-use tseitin::{algorithm::tseitin_encode, expr::VarStore, lexer::lex, parser::{Expr, Parser}};
+use tseitin::{algorithm::tseitin_encode, var::VarStore, lexer::lex, expr::Expr, parser::Parser};
 use clap::Parser as ClapParser;
 
 /// Tseiting encoding for boolean expresions (e.g. `a & ( !b | c )`)

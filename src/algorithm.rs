@@ -1,4 +1,4 @@
-use crate::{cnf::Cnf, expr::VarStore, parser::{BiOp, Expr}, types::Atom};
+use crate::{cnf::Cnf, var::VarStore, expr::{BiOp, Expr}, types::Atom};
 
 /// Perform tseitin encoding of [`Expr`]. Returns a [`CNF`](https://en.wikipedia.org/wiki/Conjunctive_normal_form)-conform [`Expr`]. 
 pub fn tseitin_encode(expr_input: &Expr, var_store: VarStore) -> Cnf {
@@ -34,7 +34,7 @@ fn tseitin_encode_inner(expr: &Expr, cnf: &mut Cnf) -> i32 {
 
 
 pub fn and_cnf(cnf: &mut Cnf, a: i32, b: i32) -> i32 {
-    let extra_lit = cnf.mut_var_store().new_extra_var();
+    let extra_lit = cnf.mut_var_store().new_extra_var() as i32;
     cnf.add_clause(vec![-extra_lit, a]);
     cnf.add_clause(vec![-extra_lit, b]);
     cnf.add_clause(vec![extra_lit, -a,-b]);
@@ -42,7 +42,7 @@ pub fn and_cnf(cnf: &mut Cnf, a: i32, b: i32) -> i32 {
 } 
 
 pub fn or_cnf(cnf: &mut Cnf, a: i32, b: i32) -> i32 {
-    let extra_lit = cnf.mut_var_store().new_extra_var();
+    let extra_lit = cnf.mut_var_store().new_extra_var() as i32;
     cnf.add_clause(vec![extra_lit, -a]);
     cnf.add_clause(vec![extra_lit, -b]);
     cnf.add_clause(vec![-extra_lit, a, b]);
@@ -50,20 +50,20 @@ pub fn or_cnf(cnf: &mut Cnf, a: i32, b: i32) -> i32 {
 } 
 
 pub fn not_cnf(cnf: &mut Cnf, a: i32) -> i32 {
-    let extra_lit = cnf.mut_var_store().new_extra_var();
+    let extra_lit = cnf.mut_var_store().new_extra_var() as i32;
     cnf.add_clause(vec![-extra_lit, -a]);
     cnf.add_clause(vec![extra_lit, a]);
     extra_lit
 }
 
 pub fn true_cnf(cnf: &mut Cnf) -> i32 {
-    let extra_lit = cnf.mut_var_store().new_extra_var();
+    let extra_lit = cnf.mut_var_store().new_extra_var() as i32;
     cnf.add_clause(vec![extra_lit]);
     extra_lit
 }
 
 pub fn false_cnf(cnf: &mut Cnf) -> i32 {
-    let extra_lit = cnf.mut_var_store().new_extra_var();
+    let extra_lit = cnf.mut_var_store().new_extra_var() as i32;
     cnf.add_clause(vec![-extra_lit]);
     extra_lit
 }

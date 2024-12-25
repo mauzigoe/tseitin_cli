@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use tseitin::{types::Atom, lexer::lex, parser::{Parser, BiOp, Expr}};
+    use tseitin::{types::Atom, lexer::lex, parser::Parser, expr::{BiOp, Expr}};
 
     
     #[test]

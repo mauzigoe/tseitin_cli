@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, iter::Peekable, str::Chars};
 
-use crate::{expr::VarStore, types::{Atom, Op}};
+use crate::{var::VarStore, types::{Atom, Op}};
 
 /// Representation of possible errors occuring during lexical analysis
 #[derive(Clone,Debug,Eq,PartialEq)]
@@ -27,14 +27,8 @@ fn scan_next_token<'a>(iter: &mut Peekable<Chars>, var_list: &mut VarStore) -> R
 	    while let Some(x) = iter.next_if(|x| x.is_ascii_alphanumeric() || (x == &'_')) {
 		    var_name.push(x);
 	    }
-	    match var_list.try_get_by_string(&var_name) {
-		Some(index) => return Ok(Token::Atom(Atom::Var(index))),
-		None => {
-		    let index = var_list.n_var() + 1;
-		    var_list.insert(var_name);
-		    Ok(Token::Atom(Atom::Var(index)))
-		}
-	    }
+	    let index = var_list.insert_and_get_index(var_name);
+	    Ok(Token::Atom(Atom::Var(index)))
 	},
 	'(' => Ok(Token::LeftBracket),
 	')' => Ok(Token::RightBracket),
@@ -55,14 +49,12 @@ fn scan_next_token<'a>(iter: &mut Peekable<Chars>, var_list: &mut VarStore) -> R
 pub fn lex(input: String) -> Result<(VecDeque<Token>, VarStore),LexerErrorCode> {
     let mut store = VecDeque::<Token>::new();
     let mut store_var = VarStore::new();
-
     let mut chars = input.chars().peekable();
     
     loop {
 	let token_res = scan_next_token(&mut chars, &mut store_var);
 	match token_res {
 	    Ok(token) => {
-		// println!("Token: {:?}", token);
 		match token {
 		    Token::Eof => break,
 		    _ => store.push_back(token),
@@ -74,4 +66,3 @@ pub fn lex(input: String) -> Result<(VecDeque<Token>, VarStore),LexerErrorCode> 
     };
     Ok((store, store_var))
 }
-

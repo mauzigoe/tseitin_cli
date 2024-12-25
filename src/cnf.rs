@@ -1,9 +1,8 @@
 use std::{fs::File, io::Write, path::Path};
 
-use crate::expr::VarStore;
+use crate::var::VarStore;
 
 pub struct Cnf {
-    // better?
     clauses: Vec<Vec<i32>>,
     var_store: VarStore,
 }
@@ -50,7 +49,7 @@ impl Cnf {
     fn to_dimacs_line(clause: &Vec<i32>) -> Result<String, String> {
 	let mut ret = String::new();
 	clause.iter().for_each(|x| ret.push_str(format!("{} ",x).as_str()));
-	ret.push_str("0");
+	ret.push('0');
 	Ok(ret)
     }
 }
